@@ -7,33 +7,28 @@ BIN_NAME="openrename"
 INSTALL_DIR="$HOME/$APP_NAME"
 BIN_PATH="$PREFIX/bin/$BIN_NAME"
 
-echo ""
 echo "===================================="
 echo "   OpenVPN Renamer Installer"
 echo "===================================="
-echo ""
 
-echo "[1/4] Checking Termux environment..."
+echo "[1/5] Checking Termux..."
+[ -d "$PREFIX" ] || { echo "Termux only"; exit 1; }
 
-if [ ! -d "$PREFIX" ]; then
-    echo "This installer is for Termux only."
-    exit 1
-fi
-
-echo "[2/4] Creating install directory..."
+echo "[2/5] Creating install directory..."
 mkdir -p "$INSTALL_DIR"
 
-echo "[3/4] Downloading files..."
+echo "[3/5] Cloning repository..."
 
-# اگر ریپو کلون شده:
-cp -f openvpn-renamer "$INSTALL_DIR/openvpn-renamer"
+if [ -d "$INSTALL_DIR/.git" ]; then
+    rm -rf "$INSTALL_DIR"
+fi
 
-echo "[4/4] Setting permissions..."
+git clone https://github.com/rezajavadi995/openvpn-renamer.git "$INSTALL_DIR"
+
+echo "[4/5] Setting permissions..."
 chmod +x "$INSTALL_DIR/openvpn-renamer"
 
-echo "Creating global command..."
-
-# ساخت command global
+echo "[5/5] Creating command..."
 cat > "$BIN_PATH" <<EOF
 #!/data/data/com.termux/files/usr/bin/bash
 exec "$INSTALL_DIR/openvpn-renamer" "\$@"
@@ -43,13 +38,9 @@ chmod +x "$BIN_PATH"
 
 echo ""
 echo "===================================="
-echo " Installation Completed Successfully"
+echo " Installation Completed"
 echo "===================================="
 echo ""
-echo "Now you can run the tool from anywhere:"
-echo ""
-echo "   $ openrename"
-echo ""
-echo "Folder installed at:"
-echo "   $INSTALL_DIR"
+echo "Run with:"
+echo "   openrename"
 echo ""
