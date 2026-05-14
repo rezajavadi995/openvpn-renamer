@@ -1,0 +1,196 @@
+#!/data/data/com.termux/files/usr/bin/bash
+#V2
+
+
+SUGGEST_FILE="$HOME/.ovpn_path_suggest"
+
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+MAGENTA='\033[1;35m'
+CYAN='\033[1;36m'
+WHITE='\033[1;37m'
+NC='\033[0m'
+
+save_path_usage() {
+    path="$1"
+
+    touch "$SUGGEST_FILE"
+
+    if grep -Fq "$path|" "$SUGGEST_FILE"; then
+        current=$(grep -F "$path|" "$SUGGEST_FILE" | cut -d "|" -f2)
+        newcount=$((current + 1))
+
+        grep -Fv "$path|" "$SUGGEST_FILE" > "$SUGGEST_FILE.tmp"
+        echo "$path|$newcount" >> "$SUGGEST_FILE.tmp"
+        mv "$SUGGEST_FILE.tmp" "$SUGGEST_FILE"
+    else
+        echo "$path|1" >> "$SUGGEST_FILE"
+    fi
+}
+
+show_suggestions() {
+
+    clear
+
+    echo -e "${CYAN}========================================${NC}"
+    echo -e "${GREEN}         Suggested Paths${NC}"
+    echo -e "${CYAN}========================================${NC}"
+    echo ""
+
+    touch "$SUGGEST_FILE"
+
+    mapfile -t suggestions < <(awk -F "|" '$2 >= 3 {print $1}' "$SUGGEST_FILE")
+
+    if [ ${#suggestions[@]} -eq 0 ]; then
+        echo -e "${RED}No suggested paths found.${NC}"
+        echo ""
+        read -p "Press Enter to return..."
+        main_menu
+        return
+    fi
+
+    index=1
+
+    for item in "${suggestions[@]}"; do
+        echo -e "${YELLOW}[$index]${NC} $item"
+        index=$((index + 1))
+    done
+
+    echo ""
+    echo -e "${CYAN}[0]${NC} Back"
+    echo ""
+
+    read -p "Select option: " choice
+
+    if [ "$choice" = "0" ]; then
+        main_menu
+        return
+    fi
+
+    selected_index=$((choice - 1))
+    inputfile="${suggestions[$selected_index]}"
+
+    if [ ! -f "$inputfile" ]; then
+        echo ""
+        echo -e "${RED}File not found.${NC}"
+        sleep 2
+        main_menu
+        return
+    fi
+
+    rename_process
+}
+
+rename_process() {
+
+    save_path_usage "$inputfile"
+
+    clear
+
+    echo -e "${CYAN}========================================${NC}"
+    echo -e "${GREEN}      OpenVPN Professional Renamer${NC}"
+    echo -e "${CYAN}========================================${NC}"
+    echo ""
+
+    echo -e "${YELLOW}Selected File:${NC}"
+    echo "$inputfile"
+
+    echo ""
+    read -p "Enter new profile name: " newname
+
+    dir=$(dirname "$inputfile")
+    newfile="$dir/$newname.ovpn"
+
+    cp "$inputfile" "$newfile"
+
+    sed -i 's/\r$//' "$newfile"
+
+    sed -i '/setenv FRIENDLY_NAME/dI' "$newfile"
+
+    echo "" >> "$newfile"
+    echo "setenv FRIENDLY_NAME \"$newname\"" >> "$newfile"
+
+    firstline=$(head -n 1 "$newfile")
+
+    if [[ "$firstline" =~ ^# ]]; then
+        sed -i "1s|.*|# $newname|" "$newfile"
+    else
+        sed -i "1i # $newname" "$newfile"
+    fi
+
+    echo ""
+    echo -e "${CYAN}========================================${NC}"
+    echo -e "${GREEN}Done Successfully${NC}"
+    echo -e "${CYAN}========================================${NC}"
+    echo ""
+
+    echo -e "${YELLOW}Saved As:${NC}"
+    echo "$newfile"
+
+    echo ""
+    read -p "Press Enter to continue..."
+
+    main_menu
+}
+
+manual_path() {
+
+    clear
+
+    echo -e "${CYAN}========================================${NC}"
+    echo -e "${GREEN}         Manual Path Input${NC}"
+    echo -e "${CYAN}========================================${NC}"
+    echo ""
+
+    read -p "Enter .ovpn file path: " inputfile
+
+    if [ ! -f "$inputfile" ]; then
+        echo ""
+        echo -e "${RED}File not found!${NC}"
+        sleep 2
+        main_menu
+        return
+    fi
+
+    rename_process
+}
+
+main_menu() {
+
+    clear
+
+    echo -e "${CYAN}========================================${NC}"
+    echo -e "${GREEN}      OpenVPN Professional Renamer${NC}"
+    echo -e "${CYAN}========================================${NC}"
+    echo ""
+
+    echo -e "${YELLOW}[1]${NC} Rename OpenVPN File"
+    echo -e "${YELLOW}[2]${NC} Suggested Paths"
+    echo -e "${YELLOW}[0]${NC} Exit"
+
+    echo ""
+
+    read -p "Select option: " option
+
+    case $option in
+        1)
+            manual_path
+            ;;
+        2)
+            show_suggestions
+            ;;
+        0)
+            clear
+            exit
+            ;;
+        *)
+            echo ""
+            echo -e "${RED}Invalid option.${NC}"
+            sleep 1
+            main_menu
+            ;;
+    esac
+}
+cd "$(dirname "$0")"
